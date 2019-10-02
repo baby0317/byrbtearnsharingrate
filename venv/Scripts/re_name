@@ -1,0 +1,5 @@
+#!D:\pycharm\PycharmProjects\untitled\venv\Scripts\python.exe
+
+from re_name import renamer
+
+renamer.Renamer().update()

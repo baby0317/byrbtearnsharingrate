@@ -1,0 +1,3 @@
+#!D:\pycharm\PycharmProjects\untitled\venv\Scripts\python.exe -u
+from rever.main import main
+main()
