@@ -15,6 +15,25 @@ def xpath(i):
     print(xpath)
     return xpath
 
+def charge(html,xpath):
+    charge_path = xpath+'/@class'
+    charge = etree.HTML(html).xpath(charge_path)
+    if len(charge) != 0:
+      charge_class = charge[0]
+      if charge_class=='free_bg':#免费
+         charge_information=1
+      elif charge_class=='thirtypercentdown_bg':#30%下载
+          charge_information=3
+      elif charge_class=='halfdown_bg':#50%下载
+          charge_information=4
+      elif charge_class=='twouphalfdown_bg':#50%下载&2x上传
+          charge_information=5
+      elif charge_class=='twoupfree_bg':#2x上传
+          charge_information=6
+    else:#免费&2x上传
+        charge_information = 2
+    return charge_information
+
 def name(html,xpath):
     path_name=xpath+'/td[@class="rowfollow"][1]/table/tr/td/a/b/text()'
     name = etree.HTML(html).xpath(path_name)
@@ -100,12 +119,13 @@ def publisher(response, xpath):
 
 with open('torrent_information.csv','w',encoding='utf-8-sig',newline='') as csvfile:
     torrentwriter = csv.writer(csvfile, dialect='excel')
-    torrentwriter.writerow(['排名']+['种子名称']+['详情页链接']+['评论数']+['存活时间']+['文件大小']+['做种数']+['下载数']+['完成数']+['发布者'])
+    torrentwriter.writerow(['排名']+['种子名称']+['详情页链接']+['收费信息']+['评论数']+['存活时间']+['文件大小']+['做种数']+['下载数']+['完成数']+['发布者'])
 
     response=login.main('https://bt.byr.cn/torrents.php?pktype=1')
     res=response.content
     for i in range(1,51):
       torrent_xpath=xpath(i)
+      torrent_charge=charge(res,torrent_xpath)
       torrent_name=name(res,torrent_xpath)
       torrent_url=get_downloadlink(res,torrent_xpath)
       download(torrent_url,i,response)
@@ -117,9 +137,9 @@ with open('torrent_information.csv','w',encoding='utf-8-sig',newline='') as csvf
       torrent_snatched = snatched(res, torrent_xpath)
       torrent_publisher = publisher(res, torrent_xpath)
 
-      torrentwriter.writerow([i]+[torrent_name]+[torrent_url]+[torrent_comments]+[torrent_livetime]+[torrent_size]+[torrent_seeders]+[torrent_leechers]+[torrent_snatched]+[torrent_publisher])
+      torrentwriter.writerow([i]+[torrent_name]+[torrent_url]+[torrent_charge]+[torrent_comments]+[torrent_livetime]+[torrent_size]+[torrent_seeders]+[torrent_leechers]+[torrent_snatched]+[torrent_publisher])
 
-
+'''
     for i in range(1,6):
         url = 'https://bt.byr.cn/torrents.php?inclbookmarked=0&pktype=1&incldead=0&spstate=0&page=' + str(i)
         response1 = login.main(url)
@@ -141,3 +161,4 @@ with open('torrent_information.csv','w',encoding='utf-8-sig',newline='') as csvf
             torrentwriter.writerow(
                 [k] + [torrent_name] + [torrent_url] + [torrent_comments] + [torrent_livetime] + [torrent_size] + [
                     torrent_seeders] + [torrent_leechers] + [torrent_snatched] + [torrent_publisher])
+'''
