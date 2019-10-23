@@ -1,23 +1,31 @@
 # coding=utf-8
 
 import requests        #导入requests包
+import urllib.request
+import re
 import csv
+import login
 import VCRmodule
 from bs4 import BeautifulSoup
 from scrapy import Selector
 from lxml import etree
-import login
+import os
+LEN_OF_GET_TORRENT = 10
+NAME_OF_SAVE_TORRENT = "torrent_tmp"          ###文件名、下载数这种全局变量放在前面，调整起来方便
+
+if os.path.exists(NAME_OF_SAVE_TORRENT)==False:
+    os.makedirs(NAME_OF_SAVE_TORRENT)        ###创建文件夹
 
 
 def xpath(i):
     m=i+1
     xpath='//table[@class="torrents"]//tr['+str(m)+']'
-    print(xpath)
     return xpath
 
 def charge(html,xpath):
     charge_path = xpath+'/@class'
     charge = etree.HTML(html).xpath(charge_path)
+    charge_information = 0                  ###赋初始值，好习惯
     if len(charge) != 0:
       charge_class = charge[0]
       if charge_class=='free_bg':#免费
@@ -34,6 +42,7 @@ def charge(html,xpath):
         charge_information = 2
     return charge_information
 
+
 def name(html,xpath):
     path_name=xpath+'/td[@class="rowfollow"][1]/table/tr/td/a/b/text()'
     name = etree.HTML(html).xpath(path_name)
@@ -48,17 +57,13 @@ def get_downloadlink(html,xpath):
     print(fdllink)
     return fdllink
 
-def download(url,i,cookie):
-    path=str(i)+".exe.torrent"
- #   header = {
- #       'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36',
- #       'cookie': '_ga=GA1.2.539363764.1569910414; c_secure_ssl=eWVhaA%3D%3D; c_secure_uid=MjE0Njg1; c_secure_pass=fc9aa84921ee624d2c9175ed7ad17310; c_secure_tracker_ssl=bm9wZQ%3D%3D; c_secure_login=bm9wZQ%3D%3D; _gid=GA1.2.106496991.1571792161'
- #     }
-    #download1 = requests.get(url, headers=header)
-    download2=requests.get(url,cookies=cookie)
+def download(torrent_name, url, cookie):
+    path = "./{}/{}{}".format(NAME_OF_SAVE_TORRENT, torrent_name, ".torrent") ###format函数增强字符串功能
+    #path=str(i)+".exe.torrent"
+    #print(response1.cookies)
+    download=requests.get(url, cookies=cookie)
     with open(path,"wb") as f:
-      f.write(download2.content)
-    f.close()
+      f.write(download.content)             #withopen自动close文件
 
 def comments(html,xpath):
     path_comments = xpath + '/td[@class="rowfollow"][2]/b/a/text()'
@@ -67,8 +72,8 @@ def comments(html,xpath):
         print('评论数：', comment[0])
         comments_str = str(comment[0])
     else:
-        print('无评论')
-        comments_str='无评论'
+        print(0)
+        comments_str=0
     return comments_str
 
 def livetime(html,xpath):
@@ -88,8 +93,12 @@ def size(response,xpath):
 def seeders(response, xpath):
     path_seeders=xpath+'/td[@class="rowfollow"][4]/b/a/text()'
     seeders=etree.HTML(response).xpath(path_seeders)
-    print('做种数：',seeders[0])
-    seeders_str=str(seeders[0])
+    if len(seeders) == 0:
+        print('做种数：', 0)
+        seeders_str = str(0)
+    else:
+        print('做种数：',seeders[0])
+        seeders_str=str(seeders[0])
     return seeders_str
 
 def leechers(response, xpath):
@@ -99,8 +108,8 @@ def leechers(response, xpath):
         print('下载数：',leechers[0])
         leechers_str = str(leechers[0])
     else:
-        print('无正在下载者')
-        leechers_str='无正在下载者'
+        print('下载数：', 0)
+        leechers_str= 0
     return leechers_str
 
 def snatched(response, xpath):
@@ -121,42 +130,34 @@ def publisher(response, xpath):
         publisher_str = '发布者匿名'
     return publisher_str
 
+def fanye(response):
+    path_nextpage='//*[@id="outer"]/table/tbody/tr/td/p[5]/a[6]'
 
 with open('torrent_information.csv','w',encoding='utf-8-sig',newline='') as csvfile:
     torrentwriter = csv.writer(csvfile, dialect='excel')
-    torrentwriter.writerow(['排名']+['种子名称']+['详情页链接']+['收费信息']+['评论数']+['存活时间']+['文件大小']+['做种数']+['下载数']+['完成数']+['发布者'])
+    torrentwriter.writerow(['rank']+['seed_name']+['link']+['price']+['reviews']+['life']+['size']+['seeders']+['downloaders']+['finished_num']+['updowner'])
 
     cookie=login.main('https://bt.byr.cn/torrents.php?pktype=1')
     response=requests.get('https://bt.byr.cn/torrents.php?pktype=1',cookies=cookie)
     res=response.content
 
-    for i in range(1,5):
-      torrent_xpath=xpath(i)
-      torrent_charge=charge(res,torrent_xpath)
-      torrent_name=name(res,torrent_xpath)
-      torrent_url=get_downloadlink(res,torrent_xpath)
-      download(torrent_url,i,cookie)
-      torrent_comments=comments(res,torrent_xpath)
-      torrent_livetime=livetime(res,torrent_xpath)
-      torrent_size=size(res,torrent_xpath)
-      torrent_seeders = seeders(res, torrent_xpath)
-      torrent_leechers = leechers(res, torrent_xpath)
-      torrent_snatched = snatched(res, torrent_xpath)
-      torrent_publisher = publisher(res, torrent_xpath)
-
-      torrentwriter.writerow([i]+[torrent_name]+[torrent_url]+[torrent_charge]+[torrent_comments]+[torrent_livetime]+[torrent_size]+[torrent_seeders]+[torrent_leechers]+[torrent_snatched]+[torrent_publisher])
-
-'''
-    for i in range(1,6):
-        url = 'https://bt.byr.cn/torrents.php?inclbookmarked=0&pktype=1&incldead=0&spstate=0&page=' + str(i)
-        response1 = login.main(url)
-        res1=response1.content
+    num1 = LEN_OF_GET_TORRENT//50
+    num2 = LEN_OF_GET_TORRENT%50             ###LEN_OF_GET_TORRENT写明爬取总数目，num1控制翻页 ，num2控制当页下的条数
+    for i in range(0,num1+1):
+        url='https://bt.byr.cn/torrents.php?inclbookmarked=0&pktype=1&incldead=0&spstate=0&page='+str(i)
+                                            ###翻页
+        response1 = requests.get(url,cookies=cookie)
+        res1 = response1.content
         for j in range(1, 51):
+            if i==num1 and j==num2 + 1:
+                break                      ###当页下的条数
             k = i * 50 + j
             torrent_xpath = xpath(j)
+            torrent_charge = charge(res1, torrent_xpath)
             torrent_name = name(res1, torrent_xpath)
+            torrent_name = torrent_name.replace('/', ',')     ###每次命名结束都重新替换
             torrent_url = get_downloadlink(res1, torrent_xpath)
-            download(torrent_url, k,response1)
+            download(torrent_name, torrent_url, cookie)
             torrent_comments = comments(res1, torrent_xpath)
             torrent_livetime = livetime(res1, torrent_xpath)
             torrent_size = size(res1, torrent_xpath)
@@ -166,6 +167,7 @@ with open('torrent_information.csv','w',encoding='utf-8-sig',newline='') as csvf
             torrent_publisher = publisher(res1, torrent_xpath)
 
             torrentwriter.writerow(
-                [k] + [torrent_name] + [torrent_url] + [torrent_comments] + [torrent_livetime] + [torrent_size] + [
+                [k] + [torrent_name] + [torrent_url] + [torrent_charge] + [torrent_comments] + [torrent_livetime] + [torrent_size] + [
                     torrent_seeders] + [torrent_leechers] + [torrent_snatched] + [torrent_publisher])
-'''
+        if i == num1 and j == num2 + 1:
+            break

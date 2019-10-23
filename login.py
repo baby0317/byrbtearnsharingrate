@@ -28,7 +28,7 @@ def main(url):
 
     session=requests.Session()
     r1=session.get('https://bt.byr.cn/login.php',headers=header)
-
+    print(r1.cookies)
     response=r1.content
     imglink=getimglink(response)
     imgpath=downloadimg(imglink,header)
@@ -41,10 +41,10 @@ def main(url):
       'imagehash':imagehash
       }
     r2=session.post('https://bt.byr.cn/takelogin.php',data=formdata, allow_redirects=True)
-
+    print(r2.cookies)
 
     r3=session.get(url, cookies = r2.cookies,  headers=header)
-
-    return r3
+    print(session.cookies)
+    return session.cookies
 
 
