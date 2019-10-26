@@ -49,6 +49,20 @@ def name(html,xpath):
     print('种子名称：',name[0])
     return name[0]
 
+def intro(html,xpath,cookie):
+    path_intro=xpath+'/td[@class="rowfollow"][1]/table/tr/td/a/@href'
+    intro = etree.HTML(html).xpath(path_intro)
+    introlink='https://bt.byr.cn/'+intro[0]
+    print('种子详情页网址',introlink)
+    enter = requests.get(introlink, cookies=cookie)
+    ent = enter.content
+    path_torrent = '//table[@class="mainouter"]/tr[2]/td[@id="outer"]/table[@width="1150"]/tr/td[@class="rowfollow"]/a[@class="index"]/text()'
+    #path_torrent= '//table[@class="mainouter"]//tr[1]/td[@id="outer"]/table[@width="1150"]/tr/td[@class="rowfollow"]/a/text()'
+    torrent_dl_name=etree.HTML(ent).xpath(path_torrent)
+    print('下载torrent名称：',torrent_dl_name[0])
+    return torrent_dl_name[0]
+
+
 def get_downloadlink(html,xpath):
     path_dl = xpath + '/td[@class="rowfollow"][1]/table/tr/td[2]/a/@href'
     dl = etree.HTML(html).xpath(path_dl)
@@ -57,8 +71,8 @@ def get_downloadlink(html,xpath):
     print(fdllink)
     return fdllink
 
-def download(torrent_name, url, cookie):
-    path = "./{}/{}{}".format(NAME_OF_SAVE_TORRENT, torrent_name, ".torrent") ###format函数增强字符串功能
+def download(torrent_dl_name, url, cookie):
+    path = "./{}/{}".format(NAME_OF_SAVE_TORRENT, torrent_dl_name) ###format函数增强字符串功能
     #path=str(i)+".exe.torrent"
     #print(response1.cookies)
     download=requests.get(url, cookies=cookie)
@@ -135,7 +149,7 @@ def fanye(response):
 
 with open('torrent_information.csv','w',encoding='utf-8-sig',newline='') as csvfile:
     torrentwriter = csv.writer(csvfile, dialect='excel')
-    torrentwriter.writerow(['rank']+['seed_name']+['link']+['price']+['reviews']+['life']+['size']+['seeders']+['downloaders']+['finished_num']+['updowner'])
+    torrentwriter.writerow(['rank']+['seed_name']+['link']+['torrent_name']+['price']+['reviews']+['life']+['size']+['seeders']+['downloaders']+['finished_num']+['updowner'])
 
     cookie=login.main('https://bt.byr.cn/torrents.php?pktype=1')
     response=requests.get('https://bt.byr.cn/torrents.php?pktype=1',cookies=cookie)
@@ -157,7 +171,8 @@ with open('torrent_information.csv','w',encoding='utf-8-sig',newline='') as csvf
             torrent_name = name(res1, torrent_xpath)
             torrent_name = torrent_name.replace('/', ',')     ###每次命名结束都重新替换
             torrent_url = get_downloadlink(res1, torrent_xpath)
-            download(torrent_name, torrent_url, cookie)
+            torrent_dl_name = intro(res1, torrent_xpath, cookie)
+            download(torrent_dl_name, torrent_url, cookie)
             torrent_comments = comments(res1, torrent_xpath)
             torrent_livetime = livetime(res1, torrent_xpath)
             torrent_size = size(res1, torrent_xpath)
@@ -167,7 +182,7 @@ with open('torrent_information.csv','w',encoding='utf-8-sig',newline='') as csvf
             torrent_publisher = publisher(res1, torrent_xpath)
 
             torrentwriter.writerow(
-                [k] + [torrent_name] + [torrent_url] + [torrent_charge] + [torrent_comments] + [torrent_livetime] + [torrent_size] + [
+                [k] + [torrent_name] + [torrent_url] + [torrent_dl_name]  + [torrent_charge] + [torrent_comments] + [torrent_livetime] + [torrent_size] + [
                     torrent_seeders] + [torrent_leechers] + [torrent_snatched] + [torrent_publisher])
         if i == num1 and j == num2 + 1:
             break
